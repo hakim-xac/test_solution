@@ -15,6 +15,9 @@ namespace KHAS{
         init();
     }
     
+    TCPServer::~TCPServer(){
+        if(socket_ != -1) close(socket_);
+    }
 
 
     void TCPServer::init() noexcept
@@ -109,8 +112,7 @@ namespace KHAS{
             }           
         }
         std::cout << "Server disconected!" << std::endl;
-        close(socket_);
-
+        
         if(is_error_.has_value()){
             std::cerr 
                 << "text: " << is_error_.value().text << "\n"

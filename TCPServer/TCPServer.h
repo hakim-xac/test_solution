@@ -42,7 +42,7 @@ namespace KHAS{
         public:
 
         explicit TCPServer(InputData&& input);  
-
+        ~TCPServer();
         // starts the client
         void start() noexcept;
 

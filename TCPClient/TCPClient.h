@@ -32,7 +32,7 @@ namespace KHAS{
         public:
 
         explicit TCPClient(InputData&& input);
-
+        ~TCPClient();
         // starts the client
         void start() noexcept;
 

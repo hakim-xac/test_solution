@@ -10,6 +10,9 @@ namespace KHAS{
         init();
     }
     
+    TCPClient::~TCPClient(){
+        if(socket_ != -1) close(socket_);
+    }
 
     void TCPClient::init() noexcept
     {
