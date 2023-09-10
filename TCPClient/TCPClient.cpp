@@ -40,10 +40,10 @@ namespace KHAS{
         std::cout << "----------------------------\n"
             << "client started successfully!\n"
             << "----------------------------\n" << std::left
-            << std::setw(25) << "ip_address: " << std::setw(10) << inet_ntoa(addr_.sin_addr) << "\n"
-            << std::setw(25) << "port: "  << std::setw(10) << port_ << "\n"
-            << std::setw(25) << "client shutdown command: "  << std::setw(10) << "*" << "\n"
-            << std::setw(15) << "server shutdown command: " << std::setw(10) << "#" << "\n"
+            << std::setw(25) << "ip_address: " << inet_ntoa(addr_.sin_addr) << "\n"
+            << std::setw(25) << "port: " << port_ << "\n"
+            << std::setw(25) << "client shutdown command: *\n"
+            << std::setw(15) << "server shutdown command: #\n"
             << "----------------------------" << std::endl;
 
         if(is_error_.has_value()){
@@ -52,10 +52,10 @@ namespace KHAS{
             return;
         }
 
-        std::vector<std::string> buf;
+        std::stack<std::string> buf;
         std::string cmd;
         do{
-            buf.clear();
+            //buf.clear();
             std::cout << "Enter cmd: ";
             std::getline(std::cin, cmd, '\n');
             if(cmd == "*") break;
@@ -67,16 +67,17 @@ namespace KHAS{
             ssize_t read_size{};
             do{
                 read_size = recv(socket_, tmp, 256, 0);
-                buf.emplace_back(tmp);
+                buf.push(tmp);
             } while(read_size == 256);
             
             // if the data is not received, then the server is not working
             if(read_size <= 0) break;
             std::cout << "answer:\n";
             
-            for(auto&& elem: buf){
-                std::cout << elem << "\n";
-            }
+            while(!buf.empty()){
+                std::cout << buf.top() << "\n";
+                buf.pop();
+            }            
         } while(cmd != "*");
         close(socket_);
         

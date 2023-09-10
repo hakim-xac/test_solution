@@ -1,21 +1,12 @@
 #include "TCPServer.h"
-#include <algorithm>
-#include <iostream>
-#include <fstream>
-#include <sstream>
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <sys/time.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <fcntl.h>
-#include <unistd.h>
+#include "pch.h"
 
 
 namespace KHAS{
 
     TCPServer::TCPServer(InputData&& input)
     : port_{ std::move(input.port) }
+    , max_timeout_{ std::move(input.max_timeout) }
     , max_connection_{ std::move(input.max_connection) }
     , socket_{ -1 }
     , addr_{}
@@ -43,7 +34,7 @@ namespace KHAS{
             is_error_ = ErrorInformation{ .return_value = ret, .text = "Bind failed!" };
             return; 
         }
-        if(int ret = listen(socket_, 5)
+        if(int ret = listen(socket_, max_connection_)
             ; ret < 0){                
             is_error_ = ErrorInformation{ .return_value = ret, .text = "Listen failed!" };
             return; 
@@ -57,10 +48,14 @@ namespace KHAS{
                 << "text: " << is_error_.value().text << std::endl;
             return;
         }
-        std::cout << "server started successfully!\n" 
-        << "ip_address: " << inet_ntoa(addr_.sin_addr) << " \n"
-        << "port: " << port_ << "\n"
-        << "max_connection: " << max_connection_ << std::endl;
+        std::cout << "----------------------------\n"
+        << "server started successfully!\n" 
+        << "----------------------------\n" << std::left
+        << std::setw(25) << "ip_address: " << inet_ntoa(addr_.sin_addr) << " \n"
+        << std::setw(25) << "port: " << port_ << "\n"
+        << std::setw(25) << "max_timeout: " << max_timeout_ << "sec.\n"
+        << std::setw(25) << "max_connection: " << max_connection_ << "\n"
+        << "----------------------------" << std::endl;
 
         bool running{ true };
         while(running){
@@ -71,7 +66,7 @@ namespace KHAS{
 
             for(auto&& sock_client: clients_) FD_SET(sock_client, &readset);            
 
-            timeval timeout{ .tv_sec = 150, .tv_usec = 0 };
+            timeval timeout{ .tv_sec = max_timeout_, .tv_usec = 0 };
             
             auto iter_max_elem{ std::max_element(clients_.begin(), clients_.end()) };
             
@@ -83,7 +78,7 @@ namespace KHAS{
                 running = false;
                 break;
             }
-
+            
             if(auto ret = isGetRequest(readset); ret.has_value()){
                
                 is_error_ = ret.value() == -1
@@ -97,7 +92,7 @@ namespace KHAS{
             
             if(!sendData(readset)){
                 running = false;
-            } 
+            }
             
             if(!running){
         
@@ -117,8 +112,9 @@ namespace KHAS{
         close(socket_);
 
         if(is_error_.has_value()){
-            std::cerr << "return value: " <<  is_error_.value().return_value << "\n"
-                << "text: " << is_error_.value().text << std::endl;
+            std::cerr 
+                << "text: " << is_error_.value().text << "\n"
+                << "return value: " <<  is_error_.value().return_value << std::endl;
             return;
         }
     }
@@ -128,7 +124,7 @@ namespace KHAS{
     {
 
         if(FD_ISSET(socket_, &readset)){      
-            // Поступил новый запрос на соединение, используем accept
+            // if a client is connected, then we process it
             int sock = accept(socket_, NULL, NULL);
             if(sock < 0) return sock;
             fcntl(sock, F_SETFL, O_NONBLOCK);
@@ -142,11 +138,13 @@ namespace KHAS{
     {
         if(clients_.size() == 0) return false;
 
+        std::stack<int> stack_to_delete;
+
         for(auto&& sock_client: clients_)
         {
             if(FD_ISSET(sock_client, &readset))
             {
-                // Поступили данные от клиента, читаем их
+                // if data has arrived, we process it
                 constexpr const int MAX_BUFFER_SIZE{ 256 };
                 std::string cmd_str;                
                 char tmp[MAX_BUFFER_SIZE]{};
@@ -158,18 +156,23 @@ namespace KHAS{
 
                 if(bytes_read <= 0)
                 {
-                    // Соединение разорвано, удаляем сокет из множества
-                    close(sock_client);
-                    clients_.erase(sock_client);
-                    continue;
+                    stack_to_delete.push(sock_client);
+
                 }
-                // выход из программы
+                // turn off the server
                 if(tmp[0] == '#') return false;
 
-                // Отправляем данные обратно клиенту
-
+                // send data to the client
                 outputData(sock_client, std::move(cmd_str));
             }
+        }
+        while(!stack_to_delete.empty()){
+
+            // if there is no data, then the client is no longer needed and can be disabled
+            auto sock_id{ stack_to_delete.top() };
+            stack_to_delete.pop();
+            close(sock_id);
+            clients_.erase(sock_id);
         }
         return true;
     }
@@ -177,12 +180,16 @@ namespace KHAS{
 
     void TCPServer::outputData(int sock_client, std::string&& cmd_str) noexcept
     {
-        std::cout << "input cmd: ";            
-        std::cout << cmd_str << " ";                
-        std::cout << std::endl;
+        std::cout << std::left
+            << std::setw(10) << "client_id: " << std::setw(20) << sock_client << " \n"
+            << std::setw(10) << "input cmd: " << std::setw(20) << cmd_str << " \n"            
+            << std::endl;
+
         cmd_str += " > ./tmpfile.txt";
         
-        std::cout << "return system: " << std::system(cmd_str.c_str());
+        std::cout << std::setw(10) << "return system: \n"
+            << std::system(cmd_str.c_str()) << std::endl;
+            
 
 
         std::stringstream ss{"+"};
@@ -192,132 +199,4 @@ namespace KHAS{
         send(sock_client, ss.str().c_str(), ss.str().length(), 0);
     }
 
-    void TCPServer::start2() noexcept
-    {
-
-    int main_socket{  socket(AF_INET, SOCK_STREAM, 0) };
-    if(main_socket < 0){
-        std::cout << "Create socket error!" << std::endl;
-        exit(0);
-    }
-
-
-    std::cout << "SERVER: Socked was success created" << std::endl;
-
-    sockaddr_in addr{};
-    addr.sin_family = AF_INET;
-    addr.sin_port = htons(3333);
-    addr.sin_addr.s_addr = htons(INADDR_ANY);
-
-    int ret{ bind(main_socket, reinterpret_cast<sockaddr*>(&addr), sizeof addr) };
-    if(ret < 0) {
-        std::cout << "Server error: binding connection.";
-        return;
-    }
-
-    std::cout << "Server: Listening clients..." << std::endl;
-    if(listen(main_socket, 5) == -1){
-        std::cout << "error listen!\n";
-        exit(2);
-    }
-
-    std::set<int> clients;  
-    
-
-    bool running{ true };
-    while(running){
-        
-        fd_set readset;
-        FD_ZERO(&readset);
-        FD_SET(main_socket, &readset);
-        for(auto&& sock_client: clients){
-            FD_SET(sock_client, &readset);
-        }
-        timeval timeout;
-        timeout.tv_sec = 150;
-        timeout.tv_usec = 0;
-
-        auto iter_max_elem{ std::max_element(clients.begin(), clients.end()) };
-
-        int mx = std::max(main_socket, iter_max_elem == clients.end() ? main_socket : *iter_max_elem);
-        if(select(mx+1, &readset, NULL, NULL, &timeout) <= 0)
-        {
-            perror("select");
-            exit(3);
-        }
-
-        if(FD_ISSET(main_socket, &readset))
-        {
-            // Поступил новый запрос на соединение, используем accept
-            int sock = accept(main_socket, NULL, NULL);
-            if(sock < 0)
-            {
-                perror("accept");
-                exit(3);
-            }
-            
-            fcntl(sock, F_SETFL, O_NONBLOCK);
-
-            clients.insert(sock);
-        }
-
-        for(auto&& sock_client: clients)
-        {
-            if(FD_ISSET(sock_client, &readset))
-            {
-                // Поступили данные от клиента, читаем их
-                std::string cmd_str;                
-                char tmp[256]{};
-                ssize_t bytes_read{};
-                do{
-                    bytes_read = recv(sock_client, tmp, 256, 0);
-                    cmd_str += tmp;
-                } while(bytes_read == 256);
-
-
-                if(bytes_read <= 0)
-                {
-                    // Соединение разорвано, удаляем сокет из множества
-                    close(sock_client);
-                    clients.erase(sock_client);
-                    continue;
-                }
-                 if(tmp[0] == '#') {
-                    running = false;
-                    break;
-                }
-
-                // Отправляем данные обратно клиенту
-
-                std::cout << "input cmd: ";            
-                std::cout << cmd_str << " ";                
-                std::cout << std::endl;
-                cmd_str += " > ./tmpfile.txt";
-                
-                std::system(cmd_str.c_str());
-                std::stringstream ss{"+"};
-                ss << std::ifstream("./tmpfile.txt").rdbuf();
-                std::system("rm -f tmpfile.txt");
-
-                send(sock_client, ss.str().c_str(), ss.str().length(), 0);
-
-            }
-        }
-        if(!running){
-            
-            for(auto&& sock_client: clients)
-            {
-                if(FD_ISSET(sock_client, &readset))
-                {
-                    std::string ss{"server closed!\n"};
-                    send(sock_client, ss.c_str(), ss.length(), 0);
-                    close(sock_client);
-                }
-            }
-            clients.clear();
-            
-        }
-    }
-    close(main_socket);
-    }
 }
