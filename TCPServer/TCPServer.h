@@ -16,7 +16,7 @@ namespace KHAS{
         int max_connection;
     };
 
-    struct OutputData{ 
+    struct ErrorInformation{ 
         int return_value;
         std::string text;
     };
@@ -27,7 +27,7 @@ namespace KHAS{
             int max_connection_;
             int socket_;
             sockaddr_in addr_;
-            std::optional<OutputData> is_error_;
+            std::optional<ErrorInformation> is_error_;
             std::set<int> clients_;
         private:
             void init() noexcept;

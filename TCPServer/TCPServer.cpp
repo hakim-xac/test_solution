@@ -34,18 +34,18 @@ namespace KHAS{
         
         socket_ = socket(AF_INET, SOCK_STREAM, 0);  
         if(socket_ == -1)    {
-            is_error_ = OutputData{ .return_value = socket_, .text = "Create socket error!" };
+            is_error_ = ErrorInformation{ .return_value = socket_, .text = "Create socket error!" };
             return;   
         }
 
         if(int ret = bind(socket_, reinterpret_cast<sockaddr*>(&addr_), sizeof addr_)
             ; ret < 0){                
-            is_error_ = OutputData{ .return_value = ret, .text = "Bind failed!" };
+            is_error_ = ErrorInformation{ .return_value = ret, .text = "Bind failed!" };
             return; 
         }
         if(int ret = listen(socket_, 5)
             ; ret < 0){                
-            is_error_ = OutputData{ .return_value = ret, .text = "Listen failed!" };
+            is_error_ = ErrorInformation{ .return_value = ret, .text = "Listen failed!" };
             return; 
         }
     }
@@ -79,7 +79,7 @@ namespace KHAS{
             
             if(auto ret = select(mx+1, &readset, NULL, NULL, &timeout); ret <= 0)
             {
-                is_error_ = OutputData{ .return_value = ret, .text = "Select failed! or timeout limited!" };
+                is_error_ = ErrorInformation{ .return_value = ret, .text = "Select failed! or timeout limited!" };
                 running = false;
                 break;
             }
@@ -87,8 +87,8 @@ namespace KHAS{
             if(auto ret = isGetRequest(readset); ret.has_value()){
                
                 is_error_ = ret.value() == -1
-                ? OutputData{ .return_value = ret.value(), .text = "FD_ISSET failed!" }
-                : OutputData{ .return_value = ret.value(), .text = "Accept failed!" };
+                ? ErrorInformation{ .return_value = ret.value(), .text = "FD_ISSET failed!" }
+                : ErrorInformation{ .return_value = ret.value(), .text = "Accept failed!" };
 
                 running = false;
                 break;
