@@ -52,10 +52,10 @@ namespace KHAS{
             return;
         }
 
-        std::stack<std::string> buf;
+        std::vector<std::string> buf;
         std::string cmd;
         do{
-            
+            buf.clear();
             std::cout << "Enter cmd: ";
             std::getline(std::cin, cmd, '\n');
             if(cmd == "*") break;
@@ -67,14 +67,15 @@ namespace KHAS{
             ssize_t read_size{};
             do{
                 read_size = recv(socket_, tmp, 256, 0);
-                buf.push(tmp);
+                buf.emplace_back(tmp);
             } while(read_size == 256);
             
             // if the data is not received, then the server is not working
             if(read_size <= 0) break;
             std::cout << "answer:\n";
-            while(!buf.empty()){
-                std::cout << buf.top() << "\n";
+            
+            for(auto&& elem: buf){
+                std::cout << elem << "\n";
             }
         } while(cmd != "*");
         close(socket_);
