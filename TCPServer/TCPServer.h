@@ -36,9 +36,19 @@ namespace KHAS{
             std::optional<int> isGetRequest(const fd_set& readset) noexcept;
 
             // sprocesses data that came from the client
-            bool sendData(const fd_set& readset) noexcept;
+            bool isSendData(const fd_set& readset) noexcept;
 
+            // send data to the user
             void outputData(int sock_client, std::string&& cmd_str) noexcept;
+
+            // removes whitespace characters from the beginning and end of a string
+            std::string trim(std::string&& str) noexcept;
+            
+            // removes whitespace characters from the beginning of a string
+            std::string ltrim(std::string&& str) noexcept;
+
+            // removes whitespace characters from the end of a string
+            std::string rtrim(std::string&& str) noexcept;
         public:
 
         explicit TCPServer(InputData&& input);          

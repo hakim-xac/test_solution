@@ -82,7 +82,11 @@ namespace KHAS{
         do{
             //buf.clear();
             std::cout << "Enter cmd: ";
-            std::getline(std::cin, cmd, '\n');
+            do{
+                std::getline(std::cin, cmd, '\n');
+                cmd = trim(std::move(cmd));
+            } while(cmd.empty());
+            
             if(cmd == "*") break;
             send(socket_, cmd.c_str(), cmd.length(), 0);
             if(cmd == "#") break;
@@ -112,5 +116,24 @@ namespace KHAS{
                 << "text: " << is_error_.value().text << std::endl;
             return;
         }
+    }
+
+    std::string TCPClient::trim(std::string&& str) noexcept
+    {           
+        return rtrim(ltrim(std::move(str)));
+    }
+
+    std::string TCPClient::ltrim(std::string &&str) noexcept
+    {                
+        auto fn{ std::find_if(str.begin(), str.end(), [](char c){ return !std::isspace(c); }) };
+
+        return fn != str.end() ? std::string(fn, str.end()) : str;
+    }
+
+    std::string TCPClient::rtrim(std::string &&str) noexcept
+    {        
+        auto fn{ std::find_if(str.rbegin(), str.rend(), [](char c){ return !std::isspace(c); }) };
+        if (fn != str.rend()) str.erase(fn.base(), str.rbegin().base());
+        return str;
     }
 }

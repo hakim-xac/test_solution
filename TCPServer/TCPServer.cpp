@@ -3,6 +3,7 @@
 
 
 namespace KHAS{
+    
 
     TCPServer::TCPServer(InputData&& input)
     : port_{ std::move(input.port) }
@@ -119,7 +120,7 @@ namespace KHAS{
             }
 
             
-            if(!sendData(readset)){
+            if(!isSendData(readset)){
                 running = false;
             }
             
@@ -129,8 +130,6 @@ namespace KHAS{
                 {
                     if(FD_ISSET(sock_client, &readset))
                     {
-                        std::string ss{"server closed!\n"};
-                        send(sock_client, ss.c_str(), ss.length(), 0);
                         send(sock_client, "*", 1, 0);
                         close(sock_client);
                     }
@@ -163,11 +162,9 @@ namespace KHAS{
     }
 
 
-    bool TCPServer::sendData(const fd_set& readset) noexcept
+    bool TCPServer::isSendData(const fd_set& readset) noexcept
     {
         if(clients_.size() == 0) return false;
-
-        std::stack<int> stack_to_delete;
 
         for(auto&& sock_client: clients_)
         {
@@ -185,8 +182,10 @@ namespace KHAS{
 
                 if(bytes_read <= 0)
                 {
-                    stack_to_delete.push(sock_client);
-
+                    //if the data has not arrived, then disconnect the client
+                    close(sock_client);
+                    clients_.erase(sock_client);
+                    continue;
                 }
                 // turn off the server
                 if(tmp[0] == '#') 
@@ -198,14 +197,6 @@ namespace KHAS{
                 outputData(sock_client, std::move(cmd_str));
             }
         }
-        while(!stack_to_delete.empty()){
-
-            // if there is no data, then the client is no longer needed and can be disabled
-            auto sock_id{ stack_to_delete.top() };
-            stack_to_delete.pop();
-            close(sock_id);
-            clients_.erase(sock_id);
-        }
         return true;
     }
 
@@ -216,6 +207,8 @@ namespace KHAS{
             << std::setw(10) << "client_id: " << std::setw(20) << sock_client << " \n"
             << std::setw(10) << "input cmd: " << std::setw(20) << cmd_str << " \n"            
             << std::endl;
+
+        cmd_str = trim(std::move(cmd_str));
 
         cmd_str += " > ./tmpfile.txt";
         
@@ -231,4 +224,23 @@ namespace KHAS{
         send(sock_client, ss.str().c_str(), ss.str().length(), 0);
     }
 
+    
+    std::string TCPServer::trim(std::string&& str) noexcept
+    {           
+        return rtrim(ltrim(std::move(str)));
+    }
+
+    std::string TCPServer::ltrim(std::string &&str) noexcept
+    {                
+        auto fn{ std::find_if(str.begin(), str.end(), [](char c){ return !std::isspace(c); }) };
+
+        return fn != str.end() ? std::string(fn, str.end()) : str;
+    }
+
+    std::string TCPServer::rtrim(std::string &&str) noexcept
+    {        
+        auto fn{ std::find_if(str.rbegin(), str.rend(), [](char c){ return !std::isspace(c); }) };
+        if (fn != str.rend()) str.erase(fn.base(), str.rbegin().base());
+        return str;
+    }
 }

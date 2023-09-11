@@ -7,6 +7,8 @@
 #include <optional>
 #include <charconv>
 #include <type_traits>
+#include <limits>
+#include <functional>
 
 #include <sys/types.h>
 #include <sys/socket.h>

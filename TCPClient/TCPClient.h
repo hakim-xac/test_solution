@@ -29,6 +29,15 @@ namespace KHAS{
         // initiates variables
         void init() noexcept;
 
+        // removes whitespace characters from the beginning and end of a string
+        std::string trim(std::string&& str) noexcept;
+        
+        // removes whitespace characters from the beginning of a string
+        std::string ltrim(std::string&& str) noexcept;
+
+        // removes whitespace characters from the end of a string
+        std::string rtrim(std::string&& str) noexcept;
+
         public:
 
         explicit TCPClient(InputData&& input);
