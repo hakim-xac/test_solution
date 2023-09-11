@@ -41,8 +41,16 @@ namespace KHAS{
             void outputData(int sock_client, std::string&& cmd_str) noexcept;
         public:
 
-        explicit TCPServer(InputData&& input);  
+        explicit TCPServer(InputData&& input);          
+        TCPServer() = delete;
+        TCPServer(const TCPServer&) = delete;
+        TCPServer(TCPServer&& other) noexcept;
+        TCPServer& operator = (const TCPServer&) = delete;
+        TCPServer& operator = (TCPServer&& other) noexcept;
         ~TCPServer();
+
+        public:
+        
         // starts the client
         void start() noexcept;
 

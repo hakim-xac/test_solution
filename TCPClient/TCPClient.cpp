@@ -9,8 +9,30 @@ namespace KHAS{
     {
         init();
     }
-    
-    TCPClient::~TCPClient(){
+
+    TCPClient::TCPClient(TCPClient &&other) noexcept
+    : ip_address_{ std::move(other.ip_address_) }
+    , addr_{ std::move(other.addr_) }
+    , port_{ std::move(other.port_) }
+    , socket_{ std::move(other.socket_) }
+    , is_error_{ std::move(other.is_error_) }
+    {
+    }
+
+    TCPClient &TCPClient::operator=(TCPClient &&other) noexcept
+    {        
+        if(this != &other){
+            ip_address_ = std::move(other.ip_address_);
+            addr_ = std::move(other.addr_);
+            port_ = std::move(other.port_);
+            socket_ = std::move(other.socket_);
+            is_error_ = std::move(other.is_error_);            
+        }
+        return *this;
+    }
+
+    TCPClient::~TCPClient()
+    {
         if(socket_ != -1) close(socket_);
     }
 
@@ -63,7 +85,7 @@ namespace KHAS{
             std::getline(std::cin, cmd, '\n');
             if(cmd == "*") break;
             send(socket_, cmd.c_str(), cmd.length(), 0);
-
+            if(cmd == "#") break;
             std::cout << "waiting for server connections..\n";
 
             char tmp[256]{};

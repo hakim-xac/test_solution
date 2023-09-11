@@ -32,7 +32,14 @@ namespace KHAS{
         public:
 
         explicit TCPClient(InputData&& input);
+        TCPClient() = delete;
+        TCPClient(const TCPClient&) = delete;
+        TCPClient(TCPClient&& other) noexcept;
+        TCPClient& operator = (const TCPClient&) = delete;
+        TCPClient& operator = (TCPClient&& other) noexcept;
         ~TCPClient();
+
+        public:
         // starts the client
         void start() noexcept;
 

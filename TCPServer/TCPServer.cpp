@@ -20,6 +20,32 @@ namespace KHAS{
     }
 
 
+    TCPServer::TCPServer(TCPServer&& other) noexcept
+    : port_{std::move(other.port_) }
+    , max_connection_{ std::move(other.max_connection_) }
+    , max_timeout_{ std::move(other.max_timeout_) }
+    , socket_{ std::move(other.socket_) }
+    , addr_{ std::move(other.addr_) }
+    , is_error_{ std::move(other.is_error_) }
+    , clients_{ std::move(other.clients_) }
+    {
+
+    }
+
+    TCPServer& TCPServer::operator=(TCPServer&& other) noexcept
+    {
+        if(this != &other){
+            port_ = std::move(other.port_);
+            max_connection_ = std::move(other.max_connection_);
+            max_timeout_ = std::move(other.max_timeout_);
+            socket_ = std::move(other.socket_);
+            addr_ = std::move(other.addr_);
+            is_error_ = std::move(other.is_error_);
+            clients_ = std::move(other.clients_);
+        }
+        return *this;        
+    }
+
     void TCPServer::init() noexcept
     {
         addr_.sin_port = htons(port_);
@@ -105,6 +131,7 @@ namespace KHAS{
                     {
                         std::string ss{"server closed!\n"};
                         send(sock_client, ss.c_str(), ss.length(), 0);
+                        send(sock_client, "*", 1, 0);
                         close(sock_client);
                     }
                 }
@@ -162,7 +189,10 @@ namespace KHAS{
 
                 }
                 // turn off the server
-                if(tmp[0] == '#') return false;
+                if(tmp[0] == '#') 
+                {
+                    return false;
+                }
 
                 // send data to the client
                 outputData(sock_client, std::move(cmd_str));
